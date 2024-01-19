@@ -1,4 +1,4 @@
-import { INewUser } from "@/types";
+import { INewPost, INewUser } from "@/types";
 import { ID,Permission,Query,Role } from 'appwrite'
 import { account, appwriteConfig, avatars, client, databases,storage } from "./config";
 
@@ -116,6 +116,168 @@ export async function signOutAccount() {
         console.error(error);
     }
 
+}
+
+//creat post
+// export async function createPost(post: INewPost){
+//     try {
+//         //upload image to storage
+//         const uploadedFile = await uploadFile(post.file[0]);
+        
+//         if(!uploadedFile){
+//             throw Error;
+//         }
+
+//         //get the url
+//         const fileUrl = getFilePreview(uploadedFile.$id);
+//         console.log(fileUrl)
+
+//         if(!fileUrl){
+//             deleteFile(uploadedFile.$id);
+//             throw Error;
+//         }
+
+//         //convert tags in an array
+//         const tags = post.tags?.replace(/ /g,'').split(',') || [];
+
+//         //save post to database
+
+//         const newPost = await databases.createDocument(
+//             appwriteConfig.databaseId,
+//             appwriteConfig.postCollectionId,
+//             ID.unique(),
+//             {
+//                 creator: post.userId,
+//                 cpation: post.caption,
+//                 imageUrl: fileUrl,
+//                 imageId: uploadedFile.$id,
+//                 location: post.location,
+//                 tags: tags,
+//             }
+//         )
+
+//         if(!newPost){
+//            await deleteFile(uploadedFile.$id);
+//             throw Error;
+//         }
+
+//         return newPost;
+
+//     } catch (error) {
+//         console.log(error)
+//     }
+// }
+
+export async function createPost(post: INewPost) {
+    try {
+      // Upload file to appwrite storage
+      const uploadedFile = await uploadFile(post.file[0]);
+  
+      if (!uploadedFile) throw Error;
+  
+      // Get file url
+      const fileUrl = await getFilePreview(uploadedFile.$id);
+      console.log("hello")
+      console.log(fileUrl);
+      if (!fileUrl) {
+        await deleteFile(uploadedFile.$id);
+        throw Error;
+      }
+  
+      // Convert tags into array
+      const tags = post.tags?.replace(/ /g, "").split(",") || [];
+  
+      // Create post
+      const newPost = await databases.createDocument(
+        appwriteConfig.databaseId,
+        appwriteConfig.postCollectionId,
+        ID.unique(),
+        {
+          creator: post.userId,
+          Caption: post.caption,
+          ImageUrl: fileUrl,
+          ImageId: uploadedFile.$id,
+          location: post.location,
+          tags: tags,
+        }
+      );
+  
+      console.log(newPost);
+  
+      if (!newPost) {
+        await deleteFile(uploadedFile.$id);
+        throw Error;
+      }
+  
+      return newPost;
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+//upload file
+export async function uploadFile(file: File){
+    try {
+        const uploadedFile = await storage.createFile(
+            appwriteConfig.storageId,
+            ID.unique(),
+            file
+        );
+
+        return uploadedFile;
+
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+//get file url
+export async function getFilePreview(fileId: string){
+    try {
+        const fileUrl = storage.getFilePreview(
+            appwriteConfig.storageId,
+            fileId,
+            2000,
+            2000,
+            "top",
+            100,
+        )
+        if(!fileUrl) throw Error;
+
+        console.log(fileUrl)
+        return fileUrl;
+
+        
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+export async function deleteFile(fileId:string){
+    try {
+        await storage.deleteFile(appwriteConfig.storageId, fileId);
+
+        return { status: 'ok'}
+
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+export async function getRecentPosts(){
+    try {
+        const posts = await databases.listDocuments(
+          appwriteConfig.databaseId,
+          appwriteConfig.postCollectionId,
+          [Query.orderDesc("$createdAt"), Query.limit(20)]
+        );
+    
+        if (!posts) throw Error;
+    
+        return posts;
+      } catch (error) {
+        console.log(error);
+      }
 }
 
 // export function getCurrentUser(){
