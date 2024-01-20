@@ -1,9 +1,15 @@
 import PostForm from '@/components/forms/PostForm'
+import Loader from '@/components/shared/Loader';
+import { useGetPosytById } from '@/lib/react-query/queriesAndMutations';
 import React from 'react'
 import { useParams } from 'react-router-dom';
 
 const EditPost = () => {
   const { id } = useParams();
+  const { data: post, isPending} = useGetPosytById(id || '');
+
+  if(isPending) return <Loader/>
+
   
   return (
       <div className="flex flex-1">
@@ -17,7 +23,7 @@ const EditPost = () => {
                 />
                 <h2 className="h3-bold md:h2-bold text-left w-full">Create Post</h2>
             </div>
-            <PostForm/>
+            <PostForm action="Update" post={post}/>
         </div>
     </div>
   )

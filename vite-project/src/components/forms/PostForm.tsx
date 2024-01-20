@@ -20,15 +20,18 @@ import { Models } from "appwrite"
 import { useUserContext } from "@/context/AuthContext"
 import { useToast } from "../ui/use-toast"
 import { useNavigate } from "react-router-dom"
-import { useCreatePost } from "@/lib/react-query/queriesAndMutations"
+import { useCreatePost, useUpdatePost } from "@/lib/react-query/queriesAndMutations"
 
 type PostFormProps = {
     post?: Models.Document
+    action: 'Create' | 'Update'
 }
 
-const PostForm = ({ post }: PostFormProps ) => {
+const PostForm = ({ post, action }: PostFormProps ) => {
 
   const { mutateAsync: createPost, isPending: isLoadingCreate } = useCreatePost();
+
+  const { mutateAsync: updatePost, isPending: isLoadingUpdate } = useUpdatePost();
   
   const navigate = useNavigate();
   const { user } = useUserContext();
@@ -38,7 +41,7 @@ const PostForm = ({ post }: PostFormProps ) => {
   const form = useForm<z.infer<typeof PostValidationSchema>>({
     resolver: zodResolver(PostValidationSchema),
     defaultValues: {
-      caption: post ? post?.caption : "",
+      caption: post ? post?.Caption : "",
       file: [],
       location: post ? post?.location : "",
       tags: post ? post.tags.join(',') : ''
@@ -46,9 +49,28 @@ const PostForm = ({ post }: PostFormProps ) => {
   })
  
   // 2. Define a submit handler.
-  const handleSubmit = async (value: z.infer<typeof PostValidationSchema>) => {
+  const handleSubmit = async (values: z.infer<typeof PostValidationSchema>) => {
+
+    if(post && action === 'Update'){
+      const updatedPost = await updatePost({
+        ...values,
+        postId: post.$id,
+        imageId: post?.imageId,
+        imageUrl: post?.imageUrl,
+      })
+
+      if(!updatedPost){
+        toast({
+          title:"Please try again ",
+  
+        })
+      }
+
+      return navigate(`/post/${post.$id}`);
+    }
+
     const newPost = await createPost({
-      ...value,
+      ...values,
       userId: user.id,
     })
     if(!newPost){
@@ -59,8 +81,10 @@ const PostForm = ({ post }: PostFormProps ) => {
     }
     navigate("/");
     console.log(newPost)
-    console.log(value)
+    console.log(values)
   }
+
+  console.log(post?.ImageUrl)
     
 
   return (
@@ -88,7 +112,7 @@ const PostForm = ({ post }: PostFormProps ) => {
               <FormControl>
                 <FileUploader 
                 fieldChange={field.onChange}
-                mediaUrl={post?.imageUrl}
+                mediaUrl={post?.ImageUrl}
                 />
               </FormControl>
               <FormMessage className="shad-fomr_message" />
@@ -128,8 +152,9 @@ const PostForm = ({ post }: PostFormProps ) => {
             <Button type="button" className="shad-button_dark-4">Cancel</Button>
             <Button type="submit"
             className="shad-button_primary whitespace-nowrap"
+            disabled={isLoadingCreate || isLoadingUpdate}
             >
-                Submit
+             {isLoadingCreate || isLoadingUpdate ? 'Loading...' : action} Post
             </Button>
         </div>
       </form>
